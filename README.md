@@ -23,12 +23,18 @@ A Streamlit-based application that uses embeddings and a local LLM (via Ollama) 
    cd log-analyzer-cli
    ```
 
-2. Install Python dependencies:
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Ensure Ollama is installed and the required model is available:
+4. Ensure Ollama is installed and the required model is available:
    ```bash
    ollama pull phi3:mini
    ```
