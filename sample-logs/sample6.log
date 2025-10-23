@@ -1,0 +1,7 @@
+[2025-10-22T13:25:44.112Z] ERROR: Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at validateInput (/app/utils/validator.js:34:22)
+    at processRequest (/app/routes/data.js:89:5)
+[INFO] 2025/10/22 13:26:01 User login success: user_4456 from 185.22.33.44
+Oct 22 13:26:15 app-server sshd[1234]: Failed password for invalid user admin from 45.79.123.11 port 55234 ssh2
+{"level":"error","ts":1734893175,"msg":"Redis connection lost","attempt":3,"max_retries":5}
+CRITICAL - Disk usage on /var/log at 98% - immediate action required

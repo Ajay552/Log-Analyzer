@@ -1,0 +1,3 @@
+2025-10-22 08:22:15 gateway-01 ERROR 502 Bad Gateway - upstream service 'inventory-api' timed out after 5000ms
+2025-10-22 08:22:16 gateway-01 WARN Rate limit exceeded for client 198.51.100.22 - 120 requests in 60s
+2025-10-22 08:22:17 gateway-01 ERROR Invalid JWT token from IP 198.51.100.22: token expired at 2025-10-22T07:00:00Z

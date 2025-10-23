@@ -1,0 +1,9 @@
+[2025-10-22 08:19:11,234] ERROR in app: Exception on /api/users [GET]
+Traceback (most recent call last):
+  File "/app/venv/lib/python3.11/site-packages/flask/app.py", line 2073, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/app/venv/lib/python3.11/site-packages/flask/app.py", line 1518, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/app/services/user_service.py", line 45, in get_users
+    return db.session.query(User).all()
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
