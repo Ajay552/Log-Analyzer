@@ -7,7 +7,7 @@ PAGE_TITLE = "Log Analyzer 2.0"
 PAGE_ICON = "📄"
 
 EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
-LLM_MODEL_NAME = 'phi3:mini'
+LLM_MODEL_NAME = 'phi4-mini:3.8b'
 
 DEFAULT_CHUNK_SIZE = 3
 DEFAULT_N_RESULTS = 5
