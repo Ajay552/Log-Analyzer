@@ -1,93 +1,81 @@
 import streamlit as st
-import ollama
-import chromadb
-from sentence_transformers import SentenceTransformer
+from config import PAGE_TITLE, PAGE_ICON
+from embedding import get_embedding_model
+from vector_db import get_db_client, get_collection, index_logs, query_logs
+from llm import ask_llm, generate_log_summary
+from ui import initialize_session_state, setup_sidebar, display_log_statistics, display_conversation, display_relevant_logs
 
-st.set_page_config(page_title="Log Analyzer 2.0")
+st.set_page_config(page_title=PAGE_TITLE, page_icon=PAGE_ICON)
 
-@st.cache_resource
-def get_embedding_model():
-    print("Loading embedding model....")
-    return SentenceTransformer('all-MiniLM-L6-v2')
-
-@st.cache_resource
-def get_db_client():
-    print("Initializing chromaDB")
-    return chromadb.Client()
+initialize_session_state()
 
 model = get_embedding_model()
 client = get_db_client()
-collection = client.get_or_create_collection(name="logs")
 
-def index_logs(log_lines):
-    existing_ids = collection.get()['ids']
-    if existing_ids:
-        collection.delete(ids=existing_ids)
+if model is None or client is None:
+    st.error("Critical components failed to initialize. Please check your setup and refresh the page.")
+    st.stop()
 
-    chunks = [" ".join(log_lines[i:i+3]) for i in range(0, len(log_lines), 3)]
-    embeddings = model.encode(chunks).tolist()
-    ids = [str(i) for i in range(len(chunks))]
-
-    collection.add(
-        embeddings=embeddings,
-        documents=chunks,
-        ids=ids
-    )
-
-    return len(chunks)
-
-def ask_llm(context, question):
-    system_prompt = "You are a log expert. Answer the user's question based *only* on the provided log snippets."
-    prompt = f"Log Snippets:\n---\n{context}\n---\nQuestion: {question}"
-
-    response = ollama.chat(
-        model='phi3:mini',
-        messages=[
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': prompt}
-        ]
-    )
-
-    return response['message']['content']
+collection = get_collection(client)
 
 st.title("📄 LLM Log Analyzer")
+
+setup_sidebar()
 
 uploaded_file = st.file_uploader("Upload your .log file", type=["log", "txt"])
 
 if uploaded_file is not None:
-    log_lines = [line.decode('utf-8').strip() for line in uploaded_file.readlines()]
-    st.success(f"Uploaded and indexed {len(log_lines)} lines.")
+    try:
+        log_lines = [line.decode('utf-8').strip() for line in uploaded_file.readlines()]
+        st.success(f"Uploaded and indexed {len(log_lines)} lines.")
 
-    with st.spinner("Indexing logs into vector database..."):
-        indexed_count = index_logs(log_lines)
-        st.write(f"Created {indexed_count} searchable log chunks.")
+        with st.spinner("Indexing logs into vector database..."):
+            indexed_count = index_logs(collection, model, log_lines, st.session_state.chunk_size)
+            st.write(f"Created {indexed_count} searchable log chunks.")
+
+        display_log_statistics(log_lines)
+
+        if st.button("Generate Log Summary"):
+            with st.spinner("Generating summary..."):
+                try:
+                    all_chunks = [" ".join(log_lines[i:i+st.session_state.chunk_size]) for i in range(0, len(log_lines), st.session_state.chunk_size)]
+                    sample_context = "\n".join(all_chunks[:min(5, len(all_chunks))])
+                    summary = generate_log_summary(sample_context, [])
+                    st.markdown("### 📋 Log Summary")
+                    st.write(summary)
+                except Exception as e:
+                    st.error(f"Failed to generate summary: {str(e)}")
+
+        st.session_state.logs_uploaded = True
+        st.session_state.log_lines = log_lines
+    except Exception as e:
+        st.error(f"Failed to process the uploaded file: {str(e)}. Please ensure it's a valid text file.")
 
 st.subheader("Ask a question about your logs")
-user_question = st.text_input("e.g., 'What errors happened?' or 'Why did the service shut down?'")
 
-if st.button("Analyze"):
-    if not user_question:
-        st.error("Please enter a question.")
-    elif collection.count() == 0:
+display_conversation()
+
+user_question = st.chat_input("e.g., 'What errors happened?' or 'Why did the service shut down?'")
+
+if user_question:
+    if collection.count() == 0:
         st.error("Please upload a log file first.")
     else:
+        st.session_state.conversation.append({"role": "user", "content": user_question})
+        with st.chat_message("user"):
+            st.write(user_question)
+
         with st.spinner("Finding relevant logs and asking LLM..."):
-            # 1. Embed the question
-            question_embedding = model.encode([user_question]).tolist()
+            try:
+                context_docs = query_logs(collection, model, user_question, st.session_state.n_results)
+                context_docs = "\n".join(context_docs)
 
-            # 2. Search ChromaDB for relevant log chunks
-            results = collection.query(
-                query_embeddings=question_embedding,
-                n_results=5  # Get top 5 most relevant chunks
-            )
+                answer = ask_llm(context_docs, user_question, st.session_state.conversation[:-1])  # Exclude current user message
 
-            context_docs = "\n".join(results['documents'][0])
+                st.session_state.conversation.append({"role": "assistant", "content": answer})
+                with st.chat_message("assistant"):
+                    st.write(answer)
+                    display_relevant_logs(context_docs)
 
-            # 3. Send to LLM
-            answer = ask_llm(context_docs, user_question)
-
-            st.markdown("### 🤖 Analysis")
-            st.write(answer)
-
-            st.markdown("### 📚 Relevant Log Snippets Used")
-            st.code(context_docs)
+            except Exception as e:
+                st.error(f"Analysis failed: {str(e)}")
