@@ -1,8 +1,11 @@
 import streamlit as st
 import re
-from config import DEFAULT_CHUNK_SIZE, DEFAULT_N_RESULTS, ERROR_PATTERNS
+from config import DEFAULT_CHUNK_SIZE, DEFAULT_N_RESULTS, ERROR_PATTERNS, setup_logging
+
+logger = setup_logging()
 
 def initialize_session_state():
+    logger.debug("Initializing session state")
     if 'conversation' not in st.session_state:
         st.session_state.conversation = []
     if 'chunk_size' not in st.session_state:
@@ -33,6 +36,7 @@ def setup_sidebar():
 def display_log_statistics(log_lines):
     total_lines = len(log_lines)
     error_count = sum(1 for line in log_lines if re.search(ERROR_PATTERNS, line, re.IGNORECASE))
+    logger.info(f"Log statistics: {total_lines} total lines, {error_count} potential issues detected")
 
     st.subheader("Log Statistics")
     st.write(f"Total lines: {total_lines}")

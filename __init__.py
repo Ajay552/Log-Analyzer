@@ -1,1 +1,0 @@
-# Log Analyzer CLI Package
